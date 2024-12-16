@@ -4,7 +4,7 @@ on:
   push:
     branches:
       - main
-  workflow_dispatch:  # Add this to allow manual triggering from GitHub UI
+  workflow_dispatch:
 
 jobs:
   setup-vps:
@@ -14,47 +14,49 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: T2HK
+    - name: Set up Server host
       run: |
-        # Tải và cài đặt ngrok
+        # Download and extract ngrok
         Invoke-WebRequest -Uri https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
         Expand-Archive ngrok.zip -DestinationPath "C:\ngrok"
         Remove-Item ngrok.zip
-        # Cấu hình với Authtoken từ GitHub Secrets
+        # Configure ngrok using authtoken from secrets
         C:\ngrok\ngrok.exe authtoken 2oNImUjD3xvGb1lxFOqTf05cNpP_2arfEX5DtHB2WmYniYk2R
-
-    - name: Start service
+    
+    - name: Configure Server bot Player
       run: |
-        # Khởi động dịch vụ RDP
-        Start-Service -Name 'TermService'
-
-    - name: Set User and Password
-      run: |
-        # Sử dụng GitHub Secrets để cấu hình User và Password cho RDP
+        # Set User and Password from GitHub Secrets
         $user = "${{ secrets.ID }}"
         $password = "${{ secrets.PS }}"
-
-        # Cấu hình User và Password
         net user $user $password /add
         net localgroup "Remote Desktop Users" $user /add
         net localgroup Administrators $user /add
+        # Start RDP service
+        Start-Service -Name 'TermService'
 
-    - name: Allow Player Admin
+    - name: Configure role Player
       run: |
-        # Mở port 3389 trong tường lửa Windows
+        # Allow RDP through Windows Firewall
         New-NetFirewallRule -DisplayName "Allow RDP" -Direction Inbound -Protocol TCP -Action Allow -LocalPort 3389
+        
+    - name: Change player Name
+      run: |
+        # Change the CPU name to 'Hk3u-CPU'
         New-ItemProperty -Path "HKLM:\HARDWARE\DESCRIPTION\System\CentralProcessor\0" -Name "ProcessorNameString" -Value "Hk3u-CPU" -Force
+
+    - name: Enable Player real join
+      run: |
+        # Enable audio redirection for RDP
         reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v fDisableAudio /t REG_DWORD /d 0 /f
         # Start the Windows Audio service
         sc config Audiosrv start= auto
         Start-Service Audiosrv
         C:\ngrok\ngrok.exe tcp 3389
-        
+
     - name: Keep session alive
       run: |
-        # Giữ kết nối RDP sống liên tục
+        # Keep the session alive with periodic checks
         while ($true) {
-            Write-Output "RDP session is alive."
-            Start-Sleep -Seconds 60 # Kiểm tra mỗi 60 giây
+          Write-Output "RDP session is alive."
+          Start-Sleep -Seconds 60
         }
-        
