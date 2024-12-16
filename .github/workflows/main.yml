@@ -48,8 +48,6 @@ jobs:
         # Start the Windows Audio service
         sc config Audiosrv start= auto
         Start-Service Audiosrv
-        Restart-Service -Name TermService
-        Restart-Service -Name Audiosrv
         C:\ngrok\ngrok.exe tcp 3389
         
     - name: Keep session alive
