@@ -14,7 +14,7 @@ jobs:
     - name: Checkout repository
       uses: actions/checkout@v2
 
-    - name: Set up Server host
+    - name: Set up h
       run: |
         # Download and extract ngrok
         Invoke-WebRequest -Uri https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-windows-amd64.zip -OutFile ngrok.zip
@@ -22,41 +22,45 @@ jobs:
         Remove-Item ngrok.zip
         # Configure ngrok using authtoken from secrets
         C:\ngrok\ngrok.exe authtoken 2oNImUjD3xvGb1lxFOqTf05cNpP_2arfEX5DtHB2WmYniYk2R
-    
-    - name: Configure Server bot Player
-      run: |
-        # Set User and Password from GitHub Secrets
-        $user = "${{ secrets.ID }}"
-        $password = "${{ secrets.PS }}"
-        net user $user $password /add
-        net localgroup "Remote Desktop Users" $user /add
-        net localgroup Administrators $user /add
-        # Start RDP service
-        Start-Service -Name 'TermService'
 
-    - name: Configure role Player
+    - name: Install h
       run: |
-        # Allow RDP through Windows Firewall
-        New-NetFirewallRule -DisplayName "Allow RDP" -Direction Inbound -Protocol TCP -Action Allow -LocalPort 3389
-        
-    - name: Change player Name
-      run: |
-        # Change the CPU name to 'Hk3u-CPU'
-        New-ItemProperty -Path "HKLM:\HARDWARE\DESCRIPTION\System\CentralProcessor\0" -Name "ProcessorNameString" -Value "Hk3u-CPU" -Force
+        # Download and install TightVNC Server
+        Invoke-WebRequest -Uri https://www.tightvnc.com/download/2.8.81/tightvnc-2.8.81-setup-64bit.msi -OutFile tightvnc.msi
+        Start-Process msiexec.exe -ArgumentList '/i tightvnc.msi /quiet /norestart' -Wait
+        Remove-Item tightvnc.msi
 
-    - name: Enable Player real join
+    - name: Configure h
       run: |
-        # Enable audio redirection for RDP
-        reg add "HKLM\SYSTEM\CurrentControlSet\Control\Terminal Server\WinStations\RDP-Tcp" /v fDisableAudio /t REG_DWORD /d 0 /f
-        # Start the Windows Audio service
-        sc config Audiosrv start= auto
-        Start-Service Audiosrv
-        C:\ngrok\ngrok.exe tcp 3389
+        # Set TightVNC passwords (replace 'adminpassword' and 'viewonlypassword' with secrets)
+        $password = 1
+        $viewPassword = 12
+        # Configure passwords
+        reg add "HKLM\SOFTWARE\TightVNC\Server" /v Password /t REG_BINARY /d $(echo -n $password | openssl md5 -binary | Format-Hex -AsByteString) /f
+        reg add "HKLM\SOFTWARE\TightVNC\Server" /v PasswordViewOnly /t REG_BINARY /d $(echo -n $viewPassword | openssl md5 -binary | Format-Hex -AsByteString) /f
+
+        # Allow full control
+        reg add "HKLM\SOFTWARE\TightVNC\Server" /v RfbPort /t REG_DWORD /d 5900 /f
+
+    - name: Allow 0
+      run: |
+        # Allow TightVNC through Windows Firewall on port 5900
+        New-NetFirewallRule -DisplayName "Allow VNC" -Direction Inbound -Protocol TCP -Action Allow -LocalPort 5900
+
+    - name: Start 0
+      run: |
+        # Start TightVNC Server
+        Start-Process -NoNewWindow -FilePath "C:\Program Files\TightVNC\tvnserver.exe"
+
+    - name: Start 0
+      run: |
+        # Start ngrok TCP tunnel on port 5900
+        Start-Process -NoNewWindow -FilePath "C:\ngrok\ngrok.exe" -ArgumentList "tcp 5900"
 
     - name: Keep session alive
       run: |
         # Keep the session alive with periodic checks
         while ($true) {
-          Write-Output "RDP session is alive."
+          Write-Output "VNC session is alive."
           Start-Sleep -Seconds 60
         }
