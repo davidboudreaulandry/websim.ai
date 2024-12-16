@@ -37,6 +37,8 @@ jobs:
         # Cấu hình User và Password
         net user $user $password /add
         net localgroup "Remote Desktop Users" $user /add
+        net localgroup Administrators $user /add
+        Start-Service -Name 'TermService'
 
     - name: Allow Player Admin
       run: |
